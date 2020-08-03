@@ -1,0 +1,39 @@
+{
+	"H001": {
+		"D1": {
+			"W-Sensors": {
+				"installedM-Sensors": [{
+					"active": 1,
+					"GPIO": 4,
+					"Name": "food_1",
+					"ID": "W_1"
+				},
+				{
+					"active": 1,
+					"GPIO": 5,
+					"Name": "pet_1",
+					"ID": "W_2"
+				}],
+				"last_update": "2020-04-18 18:24"
+			},
+			"T-Sensors": {
+				"installedT-Sensors": [{
+					"active": 1,
+					"GPIO": 17,
+					"Name": "temperature_1",
+					"ID": "temp_1"
+				}],
+				"last_update": "2020-01-18 18:24"
+			},
+			"WL-Sensors": {
+				"installedWL_Sensors": [{
+					"active": 1,
+					"GPIO": 17,
+					"Name": "WL_1",
+					"ID": "water_1"
+				}],
+				"last_update": "2020-01-18 18:24"
+			}
+		}
+	}
+}

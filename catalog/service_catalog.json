@@ -1,0 +1,33 @@
+{
+	"H001": {
+		"D1": {
+			"TelegramMQTT": {
+				"active": 1,
+				"mqtt_port": "1883",
+				"mqtt_broker": "mqtt.eclipse.org"
+			},
+			"last_update": "2020-01-11 03:49",
+			"MQTT": {
+				"active": 1,
+				"mqtt_port": "1883",
+				"mqtt_broker": "127.0.0.1"
+			},
+			"T-Sensors": {
+				"Frequency": 15
+			},
+			"W-Sensors": {
+				"Frequency": 15
+			},
+			"WL-Sensors": {
+				"Frequency": 15
+			},
+			"DataCollection": {
+				"DataInsertAPI": "http://{}:8284/sensordata",
+				"active": 1
+			},
+			"sensorStatusAPI": {
+				"API": "http://{}:8286/sensorstatus"
+			}
+		}
+	}
+}
