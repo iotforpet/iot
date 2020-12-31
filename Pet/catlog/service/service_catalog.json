@@ -1,0 +1,31 @@
+{
+	"P001": {
+		"P1": {
+			"TelegramMQTT": {
+				"active": 1,
+				"mqtt_port": "1883",
+				"mqtt_broker": "mqtt.eclipseprojects.io"
+			},
+			"ThingSpeak":{"API": "https://api.thingspeak.com/update?api_key=B6KZ0OT4CFZ4TQAX"},
+			"last_update": "2020-01-11 03:49",
+			"MQTT": {
+				"active": 1,
+				"mqtt_port": "1883",
+				"mqtt_broker": "127.0.0.1"
+			},
+			"T-Sensors": {
+				"Frequency": 15
+			},
+			"W-Sensors": {
+				"Frequency": 15
+			},
+			"WL-Sensors": {
+				"Frequency": 15
+			},
+			"DataCollection": {
+				"DataInsertAPI": "http://{}:8284/sensordata",
+				"active": 1
+			}
+		}
+	}
+}
