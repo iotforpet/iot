@@ -26,35 +26,37 @@ class ServicesCatalog():
         else:
             return ("127.0.0.1")
 
-    def updateService(self, petID, deviceID, data):
+    # update service
+    def updateService(self, petID, deviceID, k):
 
         try:
-            serviceType = data["service"]
-            serviceInfo = data["properties"]
+            for data in k:
+                serviceType = data["service"]
+                serviceInfo = data["properties"]
+                res = self.services[petID][deviceID][serviceType].keys()
 
-            res = self.services[petID][deviceID][serviceType].keys()
+                allow = [1 for i in list(serviceInfo.keys())
+                         if (i in res)]
 
-            allow = [1 for i in list(serviceInfo.keys())
-                     if (i in res)]
+                if len(serviceInfo.keys()) == sum(allow):
+                    for j in serviceInfo.keys():
+                        self.services[petID][deviceID][serviceType][j] = serviceInfo[j]
+                        output = "service updated"
+                        updateTime = str(datetime.now()).rsplit(':', 1)[0]
+                        self.services[petID][deviceID]["last_update"] = updateTime
 
-            if len(serviceInfo.keys()) == sum(allow):
-                for j in serviceInfo.keys():
-                    self.services[petID][deviceID][serviceType][j] = serviceInfo[j]
-                    output = "service updated"
-                    updateTime = str(datetime.now()).rsplit(':', 1)[0]
-                    self.services[petID][deviceID]["last_update"] = updateTime
+                else:
+                    return (self._formJson("Failed", "Keys didnt match"))
 
-            else:
-                return (self._formJson("Failed", "Keys didnt match"))
-
-            with open('services.json', 'w') as f:
-                f.write(json.dumps(self.services))
-                f.close()
+                with open('service_catalog.json', 'w') as f:
+                    f.write(json.dumps(self.services))
+                    f.close()
             return (self._formJson("success", output))
 
         except:
             return (self._formJson("failed", "Failed to Add"))
 
+    # get Service
     def getService(self, petID, deviceID, filterType):
 
         res = None
@@ -80,9 +82,10 @@ class ServicesCatalog():
         else:
             return (self._formJson("success", "device not found"))
 
+    # Json Convertion
     def _formJson(self, status, val):
         return (json.dumps({'Result': status, 'Output': val})).encode('utf8')
-
+#  cherrpy methods
 class ServiceCatalogWebService(object):
     exposed = True
 

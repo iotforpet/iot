@@ -4,6 +4,8 @@ import time
 import Adafruit_DHT as dht
 import paho.mqtt.client as MQTT
 import requests
+import random
+from datetime import datetime
 
 
 class MyMQTT:
@@ -22,7 +24,7 @@ class MyMQTT:
     def myPublish(self, temp_id, name, data):
         pw_topic = 'pet/' + str(self.petID) + '/temperature/'+temp_id+'/petTmp'
         # print(pw_topic)
-        js = {"Temperature": name, "value": data}
+        js = {"Temperature": name, "value": data,"dt":str(datetime.now())}
         print(js)
         self._paho_mqtt.publish(pw_topic, json.dumps(js), 2)
 
@@ -149,7 +151,7 @@ class tempDataCollector:
             }
             requests.post(self.dcUrl, json.dumps(inactiveData))
 
-
+    # collect data got from the sensor and publish to aggregator
     def collect_temp_data(self):
         tempInactivity = [0 for i in range(len(self.tempSensors))]
         inActivityCheckCounter = 0
@@ -159,7 +161,7 @@ class tempDataCollector:
             for idx, i in enumerate(self.tempSensors):
                     try:
                         if i['web_active'] == 1:
-                            temperature = 10
+                            temperature  = random.randrange(20,40)
                             # humidity, temperature = dht.read_retry(11, i['GPIO'])
                             self.myMqtt.myPublish(
                                 i['ID'],
@@ -185,7 +187,7 @@ class tempDataCollector:
                         try:
                             if temp['web_active'] == 1:
                                 # humidity, temperature = dht.read_retry(11, temp['GPIO'])
-                                temperature = 100
+                                temperature  = random.randrange(20,40)
                                 if temperature is not None:
                                     self.active_inactive(1, temp)
                                     self.tempSensors[temp['ID']]["active"] = 1
@@ -196,7 +198,7 @@ class tempDataCollector:
                         except:
                             pass
 
-            time.sleep(60)
+            time.sleep(1)
 if __name__ == '__main__':
     collect = tempDataCollector()
     collect.collect_temp_data()

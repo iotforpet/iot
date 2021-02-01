@@ -5,7 +5,7 @@ import numpy as np
 import paho.mqtt.client as PahoMQTT
 import requests
 import random
-
+import thingspeak
 class MyMQTT:
     def __init__(self, broker, port, notifier, petID):
         self.broker = broker
@@ -98,7 +98,7 @@ class weigDataAggregator:
             "call": "getService",
             "petID": self.petID,
             "deviceID": self.deviceID,
-            "data": ["MQTT", "last_update", "DataCollection","ThingSpeak",self.device_search]
+            "data": ["MQTT", "last_update", "DataCollection","ThingSpeak_weight",self.device_search]
         }
         serviceResp = json.loads(requests.post(self.scUrl, json.dumps(servReq)).text)
 
@@ -108,7 +108,10 @@ class weigDataAggregator:
             self.service_lastUpdate = serviceResp["Output"]["last_update"]
             self.frequency = serviceResp["Output"][self.device_search]["Frequency"]
             self.insertDataAPI = serviceResp["Output"]["DataCollection"]
-            self.thinkAPI = serviceResp["Output"]["ThingSpeak"]["API"]
+            self.thinkAPI = serviceResp["Output"]["ThingSpeak_weight"]["API"]
+            self.thinkAPIWriteKey = serviceResp["Output"]["ThingSpeak_weight"]["write_key"]
+            self.thinkAPIReadKey = serviceResp["Output"]["ThingSpeak_weight"]["read_key"]
+            self.thinkAPIChannelID = serviceResp["Output"]["ThingSpeak_weight"]["channel_ID"]
         else:
             print("couldnt recover service details. Trying again")
             time.sleep(60)
@@ -145,6 +148,7 @@ class weigDataAggregator:
         except KeyError:
             print("Yet to add the sensor")
 
+    # aggregate data got from the collector and publish to central controller, insert to database and thinkspeak
     def aggregate_Data(self):
         while True:
             for idx, weigSen in enumerate(self.weigSensors):
@@ -154,46 +158,72 @@ class weigDataAggregator:
                     )
                     del self.weig_readings[weigSen["ID"]][:self.frequency]
                     if len(self.agg_weig_readings[weigSen["ID"]]) == 1:
-                        oneHourAvg = round(np.mean(self.agg_weig_readings[weigSen["ID"]]),2)
-                        dt = datetime.now() - timedelta(hours=1)
-                        self.myMqtt.myPublish(weigSen["ID"], weigSen['Name'],str(dt.strftime('%Y-%m-%dT%H:%M:%S.%f')),
-                        oneHourAvg)
-                        sensorData = json.dumps({
-                            "call": "insert",
-                            "data": {
-                                "date": dt.strftime('%Y-%m-%dT%H:%M:%S.%f'),
-                                "sensorType": self.device_search,
-                                "sensorID": weigSen["ID"],
-                                "sensorName": weigSen["Name"],
-                                "sensorData": oneHourAvg,
-                                "avgtime": 60,
-                                "unit": "Kg",
-                                "Status": None
-                            }
-                        })
-                        print(weigSen["ID"])
-                        print(sensorData)
+                        if "pet" in weigSen["Name"]:
+                            oneHourAvg_w2 = round(np.mean(self.agg_weig_readings[weigSen["ID"]]),2)
+                            dt = datetime.now() - timedelta(hours=1)
+                            self.myMqtt.myPublish(weigSen["ID"], weigSen['Name'],str(dt.strftime('%Y-%m-%dT%H:%M:%S.%f')),
+                            oneHourAvg_w2)
+                            sensorData = json.dumps({
+                                "call": "insert",
+                                "data": {
+                                    "date": dt.strftime('%Y-%m-%dT%H:%M:%S.%f'),
+                                    "sensorType": self.device_search,
+                                    "sensorID": weigSen["ID"],
+                                    "sensorName": weigSen["Name"],
+                                    "sensorData": oneHourAvg_w2,
+                                    "avgtime": 60,
+                                    "unit": "Kg",
+                                    "Status": None
+                                }
+                            })
+                            print(weigSen["ID"])
+                            print(sensorData)
 
-                        try:
-                            if "W_2" in weigSen["ID"]:
-                                tPayload = "field4=" + str(oneHourAvg)
-                                print(self.thinkAPI + "&" + tPayload)
-                                print(requests.get(self.thinkAPI + "&" + tPayload))
-                            if "W_1" in weigSen["ID"]:
-                                tPayload = "field2=" + str(oneHourAvg)
-                                print(self.thinkAPI + "&" + tPayload)
-                                print(requests.get(self.thinkAPI + "&" + tPayload))
+                            try:
+                                requests.post(self.insertDataAPI["DataInsertAPI"], sensorData)
+                            except:
+                                pass
+                            del self.agg_weig_readings[weigSen["ID"]][:]
+                        else:
+                            oneHourAvg_w1 = round(np.mean(self.agg_weig_readings[weigSen["ID"]]), 2)
+                            dt = datetime.now() - timedelta(hours=1)
+                            self.myMqtt.myPublish(weigSen["ID"], weigSen['Name'],
+                                                  str(dt.strftime('%Y-%m-%dT%H:%M:%S.%f')),
+                                                  oneHourAvg_w1)
+                            sensorData = json.dumps({
+                                "call": "insert",
+                                "data": {
+                                    "date": dt.strftime('%Y-%m-%dT%H:%M:%S.%f'),
+                                    "sensorType": self.device_search,
+                                    "sensorID": weigSen["ID"],
+                                    "sensorName": weigSen["Name"],
+                                    "sensorData": oneHourAvg_w1,
+                                    "avgtime": 60,
+                                    "unit": "grams",
+                                    "Status": None
+                                }
+                            })
+                            print(weigSen["ID"])
+                            print(sensorData)
 
-                            time(5)
-                        except:
-                            pass
-
-                        try:
-                            requests.post(self.insertDataAPI["DataInsertAPI"], sensorData)
-                        except:
-                            pass
-                        del self.agg_weig_readings[weigSen["ID"]][:]
-            time.sleep(300)
+                            try:
+                                requests.post(self.insertDataAPI["DataInsertAPI"], sensorData)
+                            except:
+                                pass
+                            del self.agg_weig_readings[weigSen["ID"]][:]
+                try:
+                    if(oneHourAvg_w1 is not None and oneHourAvg_w2 is not None):
+                    # channel = thingspeak.Channel(id=self.thinkAPIChannelID, write_key=self.thinkAPIWriteKey,
+                    #                              api_key=self.thinkAPIReadKey)
+                    # response = channel.update({'field1 ': str(oneHourAvg)})
+                        tPayload = "field1=" + str(oneHourAvg_w2)+"&field2=" + str(oneHourAvg_w1)
+                        print(self.thinkAPI + "&" + tPayload)
+                        print(requests.get(self.thinkAPI + "&" + tPayload))
+                        oneHourAvg_w2 = None
+                        oneHourAvg_w1 = None
+                except:
+                    pass
+            time.sleep(2)
 
 
 if __name__ == "__main__":

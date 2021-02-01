@@ -45,35 +45,39 @@ class Resource_Catalog():
         res["Devices"][deviceID]["DC"] = (res["Devices"][deviceID]["DC"].format(self.get_ip_address(platform.system())))
         res["Devices"][deviceID]["SC"] = (res["Devices"][deviceID]["SC"].format(self.get_ip_address(platform.system())))
         return (self._formJson("success", res))
-
+    #  get  sensor keys
     def getSensorKeys(self, petID, sensorType):
         val = self.mongoDB["resource_catalog"].find({"PetID": petID},
                                            {"SensorKeys.{}".format(sensorType): 1, "_id": 0})
         res = val.next()
         return (self._formJson("success", res))
 
+    #  get  sensor Info
     def getsensorInfo(self, petID, deviceID):
         val = self.mongoDB["resource_catalog"].find \
             ({"PetID": petID}
              , {"_id": 0, "Devices.{}.Sensors".format(deviceID): 1})
         return (self._formJson("success", val.next()))
 
+    #  get telegram user
     def getTelegramUsers(self, petID):
         val = self.mongoDB["resource_catalog"].find({"PetID": petID}, {"Tel_Users": 1, "_id": 0})
         return (self._formJson("success", val.next()))
 
+    #  add telegram user
     def addTelegramUser(self, petID, users):
         for i in users:
             res = self.mongoDB["resource_catalog"].update_one(
                 {"PetID": petID},
-                {"$push": {"Tel_Users": int(i.encode())}}
+                {"$push": {"Tel_Users": int(i)}}
             )
         if res.acknowledged:
             self.lastUpdate(petID)
-            return (self._formJson("success", "Updated"))
+            return (self._formJson("success", "Added telegram User"))
         else:
             return (self._formJson("failed", "fail to add user"))
 
+    #  remove telegram user
     def removeTelegramUser(self, petID, users):
         for i in users:
             res = self.mongoDB["resource_catalog"].update_one(
@@ -82,10 +86,11 @@ class Resource_Catalog():
             )
         if res.acknowledged:
             self.lastUpdate(petID)
-            return (self._formJson("success", "Updated"))
+            return (self._formJson("success", "Deleted Telegram User"))
         else:
             return (self._formJson("failed", "Failed to Remove user"))
 
+    #  remove Mobile user
     def removeMobileUser(self, petID, users):
         for i in users:
             res = self.mongoDB["resource_catalog"].update_one(
@@ -97,7 +102,7 @@ class Resource_Catalog():
             return (self._formJson("success", "Updated"))
         else:
             return (self._formJson("failed", "Failed to Remove user"))
-
+    # add Mobile user
     def addMobileUser(self, petID, users):
         for i in users:
             res = self.mongoDB["resource_catalog"].update_one(
@@ -110,6 +115,7 @@ class Resource_Catalog():
         else:
             return (self._formJson("failed", "fail to add user"))
 
+    # add devices
     def addDevices(self, petID, data):
 
         addType = data["type"]
@@ -133,10 +139,11 @@ class Resource_Catalog():
         else:
             return (self._formJson("failed", "fail to add user"))
 
+    # Json Convertion
     def _formJson(self, status, val):
         return (json.dumps({'Result': status, 'Output': val})).encode('utf8')
 
-
+# Cherrpy methods
 class ResourceCatalogWebService(object):
     exposed = True
 

@@ -2,7 +2,7 @@ import json
 import cherrypy_cors
 import cherrypy
 import webServiceAPI.petDetailsAPI.petData as sd
-
+import requests
 class SensorDataWebService(object):
     exposed = True
 
@@ -18,7 +18,6 @@ class SensorDataWebService(object):
         return (res)
     def POST(self, *uri):
         pass
-
     def PUT(self):
         pass
 

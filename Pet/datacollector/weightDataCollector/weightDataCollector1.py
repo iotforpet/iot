@@ -4,8 +4,9 @@ import time
 import Adafruit_DHT as dht
 import paho.mqtt.client as MQTT
 import requests
-# import RPi.GPIO as GPIO
-# from hx711 import HX711
+import RPi.GPIO as GPIO
+from hx711 import HX711
+from datetime import datetime
 # from datacollector.weightDataCollector.hx711 import HX711
 import random
 class MyMQTT:
@@ -25,7 +26,7 @@ class MyMQTT:
     def myPublish(self, weig_id, name, data):
         pw_topic = 'pet/' + str(self.petID) + '/weight/'+weig_id+'/petWet'
         # print(pw_topic)
-        js = {"Weight": name, "value": data}
+        js = {"Weight": name, "value": data,"dt":str(datetime.now())}
         print(js)
         self._paho_mqtt.publish(pw_topic, json.dumps(js), 2)
 
@@ -124,12 +125,12 @@ class weigDataCollector:
                 }
                 requests.post(self.catalogURL, reg_device)
 
-    def setup(self,hx):
+    def setup(self,hx,offset,scale):
         """
         code run once
         """
-        # hx.set_offset(0.0)
-        # hx.set_scale(0.0006)
+        hx.set_offset(offset)
+        hx.set_scale(scale)
 
     def active_inactive(self,active,i):
         # update in device catalog
@@ -159,7 +160,7 @@ class weigDataCollector:
             }
             requests.post(self.dcUrl, json.dumps(inactiveData))
 
-
+    # collect data got from the sensor and publish to aggregator
     def collect_weig_data(self):
         weigInactivity = [0 for i in range(len(self.weigSensors))]
         inActivityCheckCounter = 0
@@ -168,23 +169,24 @@ class weigDataCollector:
             inActivityCheckCounter += 1
             for idx, i in enumerate(self.weigSensors):
                 try:
-
                     if i['web_active'] == 1:
-                        # hx = HX711(i['GPIO'], i['SCK'])
-                        # self.setup(hx)
-                        # # hx.reset()
-                        # weight = hx.get_grams()
-                        # hx.power_down()
-                        # time.sleep(.001)
-                        # hx.power_up()
-                        if(i['ID']=='W_1'):
-                            weight =  random.randrange(20000,40000) / 1000
-                        else:
-                            weight = random.randrange(200,400)
-                        self.myMqtt.myPublish(
-                            i['ID'],
-                            i['Name'],
-                             round(weight,2))
+                        hx = HX711(i['GPIO'], i['SCK'])
+                        self.setup(hx,i['offset'],i['scale'])
+                        weight = hx.get_grams()
+                        hx.power_down()
+                        time.sleep(.001)
+                        hx.power_up()
+                        if(weight>0):
+                            if("pet" in i['Name']):
+                                self.myMqtt.myPublish(
+                                    i['ID'],
+                                    i['Name'],
+                                     round(weight/1000,2))
+                            else:
+                                self.myMqtt.myPublish(
+                                    i['ID'],
+                                    i['Name'],
+                                    round(weight, 2))
                     else:
                         print("Weight Sensor:" + i['ID'] + " not Actived by user")
                         time.sleep(5)
@@ -205,16 +207,14 @@ class weigDataCollector:
                 for weig in inActiveWeig:
                     try:
                         if weig['web_active'] == 1:
-                            # hx = HX711(weig['GPIO'], weig['SCK'])
-                            # self.setup(hx)
-                            # # hx.reset()
-                            # weight = hx.get_grams()
-                            weight = 100
-                            # hx.power_down()
-                            # time.sleep(.001)
-                            # hx.power_up()
+                            hx = HX711(i['GPIO'], i['SCK'])
+                            self.setup(hx, i['offset'], i['scale'])
+                            weight = hx.get_grams()
+                            hx.power_down()
+                            time.sleep(.001)
+                            hx.power_up()
                             if weight is not None:
-                                self.active_inactive(1, weight)
+                                self.active_inactive(1, weig)
                                 self.weigSensors[weig['ID']]["active"] = 1
                         else:
                             print("Weight Sensor:" + weig['ID'] + " not Actived by user")
@@ -222,7 +222,7 @@ class weigDataCollector:
                             self.deviceConfigurations()
                     except:
                         pass
-            time.sleep(300)
+            time.sleep(2)
 if __name__ == '__main__':
     collect = weigDataCollector()
     collect.collect_weig_data()

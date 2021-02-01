@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import paho.mqtt.client as PahoMQTT
 import requests
-
+import thingspeak
 
 class MyMQTT:
     def __init__(self, broker, port, notifier, petID):
@@ -98,7 +98,7 @@ class tempDataAggregator:
             "call": "getService",
             "petID": self.petID,
             "deviceID": self.deviceID,
-            "data": ["MQTT", "last_update", "DataCollection","ThingSpeak", self.device_search]
+            "data": ["MQTT", "last_update", "DataCollection","ThingSpeak_temp", self.device_search]
         }
         serviceResp = json.loads(requests.post(self.scUrl, json.dumps(servReq)).text)
 
@@ -108,7 +108,10 @@ class tempDataAggregator:
             self.service_lastUpdate = serviceResp["Output"]["last_update"]
             self.frequency = serviceResp["Output"][self.device_search]["Frequency"]
             self.insertDataAPI = serviceResp["Output"]["DataCollection"]
-            self.thinkAPI = serviceResp["Output"]["ThingSpeak"]["API"]
+            self.thinkAPI = serviceResp["Output"]["ThingSpeak_temp"]["API"]
+            self.thinkAPIWriteKey = serviceResp["Output"]["ThingSpeak_temp"]["write_key"]
+            self.thinkAPIReadKey = serviceResp["Output"]["ThingSpeak_temp"]["read_key"]
+            self.thinkAPIChannelID = serviceResp["Output"]["ThingSpeak_temp"]["channel_ID"]
         else:
             print("couldnt recover service details. Trying again")
             time.sleep(60)
@@ -144,7 +147,7 @@ class tempDataAggregator:
             self.temp_readings[tempSensorID].append(float((json.loads(msg)['value'])))
         except KeyError:
             print("Yet to add the sensor")
-
+# aggregate data got from the collector and publish to central controller, insert to database and thinkspeak
     def aggregate_Data(self):
         while True:
             for idx, tempSen in enumerate(self.tempSensors):
@@ -173,9 +176,13 @@ class tempDataAggregator:
                         })
                         print(sensorData)
                         try:
+                        #     # channel = thingspeak.Channel(id=self.thinkAPIChannelID, write_key=self.thinkAPIWriteKey,
+                        #     #                              api_key=self.thinkAPIReadKey)
+                        #     # response = channel.update({'field1': str(oneHourAvg)})
+                        #     # print(response)
                             tPayload = "field1=" + str(oneHourAvg)
                             print(self.thinkAPI + "&" + tPayload)
-                            requests.get(self.thinkAPI + "&" + tPayload)
+                            print(requests.get(self.thinkAPI + "&" + tPayload))
                         except:
                                 pass
                         try:
@@ -183,7 +190,7 @@ class tempDataAggregator:
                         except:
                             pass
                         del self.agg_temp_readings[tempSen["ID"]][:]
-            time.sleep(60)
+            time.sleep(1)
 
 
 if __name__ == "__main__":

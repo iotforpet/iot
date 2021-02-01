@@ -5,8 +5,8 @@ import Adafruit_DHT as dht
 import paho.mqtt.client as MQTT
 import requests
 import RPi.GPIO as GPIO
-
-
+import random
+from datetime import datetime
 class MyMQTT:
     def __init__(self, broker, port, notifier, petID):
         self.broker = broker
@@ -24,7 +24,7 @@ class MyMQTT:
     def myPublish(self, wl_id, name, data):
         pw_topic = 'pet/' + str(self.petID) + '/wlht/'+wl_id+'/petWl'
         # print(pw_topic)
-        js = {"Wlht": name, "value": data}
+        js = {"Wlht": name, "value": data,"dt":str(datetime.now())}
         print(js)
         self._paho_mqtt.publish(pw_topic, json.dumps(js), 2)
 
@@ -125,22 +125,13 @@ class wlDataCollector:
 
     def setup(self,GPIO_TRIGGER,GPIO_ECHO):
         GPIO.setmode(GPIO.BCM)
-
-        # Speed of sound in cm/s at temperature
-        temperature = 20
-        speedSound = 33100 + (0.6 * temperature)
-
-
         # Set pins as output and input
         GPIO.setup(GPIO_TRIGGER, GPIO.OUT)  # Trigger
         GPIO.setup(GPIO_ECHO, GPIO.IN)  # Echo
-
         # Set trigger to False (Low)
         GPIO.output(GPIO_TRIGGER, False)
-
         # Allow module to settle
         time.sleep(0.5)
-        return speedSound
 
     def measure_average(self,speedsound,GPIO_TRIGGER,GPIO_ECHO):
         # This function takes 3 measurements and
@@ -202,7 +193,7 @@ class wlDataCollector:
             }
             requests.post(self.dcUrl, json.dumps(inactiveData))
 
-
+    # collect data got from the sensor and publish to aggregator
     def collect_wl_data(self):
         wlInactivity = [0 for i in range(len(self.wlSensors))]
         inActivityCheckCounter = 0
@@ -212,8 +203,9 @@ class wlDataCollector:
             for idx, i in enumerate(self.wlSensors):
                 try:
                     if i['web_active'] == 1:
-                        speedsound = self.setup(i['TRIGGER'], i['ECHO'])
-                        wlht = self.measure(speedsound,i['TRIGGER'], i['ECHO'])
+                        self.setup(i['TRIGGER'], i['ECHO'])
+                        wlht = self.measure(0,i['TRIGGER'], i['ECHO'])
+                        # wlht  = random.randrange(2,10)
                         print("Distance : {0:5.1f}".format(wlht))
                         time.sleep(1)
                         self.myMqtt.myPublish(
@@ -240,8 +232,9 @@ class wlDataCollector:
                 for wl in inActiveWl:
                     try:
                         if wl['web_active'] == 1:
-                            speedsound = self.setup(wl['TRIGGER'], wl['ECHO'])
-                            wlht = self.measure(speedsound, wl['TRIGGER'], wl['ECHO'])
+                            self.setup(wl['TRIGGER'], wl['ECHO'])
+                            wlht = self.measure(0, wl['TRIGGER'], wl['ECHO'])
+                            # wlht  = random.randrange(2,15)
                             print("Distance : {0:5.1f}".format(wlht))
                             if wlht is not None:
                                 self.active_inactive(1, wlht)
@@ -252,7 +245,7 @@ class wlDataCollector:
                             self.deviceConfigurations()
                     except:
                         pass
-            time.sleep(120)
+            time.sleep(3)
 if __name__ == '__main__':
     collect = wlDataCollector()
     collect.collect_wl_data()

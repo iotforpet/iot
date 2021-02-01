@@ -12,6 +12,7 @@ class Device_Catalog():
         self.devices = json.loads(self.devicefile.read())
         self.devicefile.close()
 
+#get Device info
     def getDevice(self, petID, deviceID, filterType, deviceFilter=''):
 
         res = None
@@ -43,9 +44,11 @@ class Device_Catalog():
         else:
             return (self._formJson("success", "device not found"))
 
+# Json Convertion
     def _formJson(self, status, val):
         return (json.dumps({'Result': status, 'Output': val})).encode('utf8')
 
+# get Device Web Status controlled by user
     def getDeviceWebStatus(self, petID, deviceID, sensorIDs):
 
         curSensors = []
@@ -65,6 +68,7 @@ class Device_Catalog():
         else:
             return (self._formJson("success", "device not found"))
 
+# get Device Names that is sensor in th kit
     def getDeviceName(self, petID, deviceID, sensorIDs):
 
         curSensors = []
@@ -84,6 +88,7 @@ class Device_Catalog():
         else:
             return (self._formJson("success", "device not found"))
 
+# get Device Status - Sensor Working Status
     def getDeviceStatus(self, petID, deviceID, sensorIDs):
 
         curSensors = []
@@ -122,66 +127,17 @@ class Device_Catalog():
         else:
             return (self._formJson("success", "device not found"))
 
-    def updateWebDevice(self, petID, deviceID, catalogURL, data):
-        for i in data:
-            try:
-                sensorType = i["sensor"]
-                sensorID = i["sensorID"]
-                deviceInfo = i["properties"]
-
-                res = self.devices[petID][deviceID][sensorType] \
-                    ["installed{}".format(sensorType)]
-
-                req = json.loads(
-                    requests.get(catalogURL + "/getkeys/" + petID + "/" + sensorType)
-                        .text)
-                if req["Result"] == "success":
-                    sensorKeys = req["Output"]["SensorKeys"][sensorType]
-
-                allow = [1 for i in list(deviceInfo.keys())
-                         if (i in sensorKeys[:-1])]
-
-                nameCheck = 1
-                for i in res:
-                    if i["Name"] == deviceInfo["Name"] and i["ID"] != sensorID:
-                        nameCheck = 0
-
-                if "ID" in deviceInfo.keys():
-                    return (self._formJson("failed", "can't Update Sensor ID"))
-                print(sensorKeys, deviceInfo.keys(), allow, nameCheck)
-                if len(deviceInfo.keys()) == sum(allow) and nameCheck:
-                    for i, j in enumerate(res):
-                        if j["ID"] == sensorID:
-                            for k in deviceInfo.keys():
-                                self.devices[petID][deviceID][sensorType] \
-                                    ["installed{}".format(sensorType)][i][k] = deviceInfo[k]
-                            output = "Device updated"
-                            updateTime = str(datetime.now()).rsplit(':', 1)[0]
-                            self.devices[petID][deviceID]["last_update"] = updateTime
-                            self.devices[petID][deviceID][sensorType]["last_update"] = updateTime
-                            break
-                        else:
-                            output = "Device not found"
-                else:
-                    return (self._formJson("Failed", "Keys didnt match/Same name exists"))
-
-                with open('device_catalog.json', 'w') as f:
-                    f.write(json.dumps(self.devices))
-                    f.close()
-                return (self._formJson("success", output))
-
-            except:
-                return (self._formJson("failed", "Failed to Update"))
 
     def updateDevice(self, petID, deviceID, catalogURL, data):
         try:
+            print(data)
             sensorType = data["sensor"]
             sensorID = data["sensorID"]
             deviceInfo = data["properties"]
 
             res = self.devices[petID][deviceID][sensorType] \
                 ["installed{}".format(sensorType)]
-
+            print(res)
             req = json.loads(
                 requests.get(catalogURL + "/getkeys/" + petID + "/" + sensorType)
                     .text)
@@ -223,6 +179,51 @@ class Device_Catalog():
         except:
             return (self._formJson("failed", "Failed to Update"))
 
+# update web status controlled by user to activate and deactivate sensor
+    def updateWebDevice(self, petID, deviceID, catalogURL, data):
+        try:
+            sensorType = data["sensor"]
+            sensorID = data["sensorID"]
+            deviceInfo = data["properties"]
+
+            res = self.devices[petID][deviceID][sensorType] \
+                ["installed{}".format(sensorType)]
+            req = json.loads(
+                requests.get(catalogURL + "/getkeys/" + petID + "/" + sensorType)
+                    .text)
+            if req["Result"] == "success":
+                sensorKeys = req["Output"]["SensorKeys"][sensorType]
+            allow = [1 for i in list(deviceInfo.keys())
+                     if (i in sensorKeys[:])]
+            print(sensorKeys, deviceInfo.keys(), allow)
+            if "ID" in deviceInfo.keys():
+                return (self._formJson("failed", "can't Update Sensor ID"))
+            print(sensorKeys, deviceInfo.keys(), allow)
+            if len(deviceInfo.keys()) == sum(allow):
+                for i, j in enumerate(res):
+                    if j["ID"] == sensorID:
+                        for k in deviceInfo.keys():
+                            self.devices[petID][deviceID][sensorType] \
+                                ["installed{}".format(sensorType)][i][k] = deviceInfo[k]
+                        output = "Device updated"
+                        updateTime = str(datetime.now()).rsplit(':', 1)[0]
+                        self.devices[petID][deviceID]["last_update"] = updateTime
+                        self.devices[petID][deviceID][sensorType]["last_update"] = updateTime
+                        break
+                    else:
+                        output = "Device not found"
+            else:
+                return (self._formJson("Failed", "Keys didnt match/Same name exists"))
+
+            with open('device_catalog.json', 'w') as f:
+                f.write(json.dumps(self.devices))
+                f.close()
+            return (self._formJson("success", output))
+
+        except:
+            return (self._formJson("failed", "Failed to Update"))
+
+# Cherrpy methods
 class DeviceCatalogWebService(object):
     exposed = True
 
@@ -261,7 +262,7 @@ class DeviceCatalogWebService(object):
             res = dev.updateDevice(petID, deviceID,
                                    inputtext["catalogURL"], inputtext["data"])
         elif method == "updateWebDevices":
-            res = dev.updateDevice(petID, deviceID,
+            res = dev.updateWebDevice(petID, deviceID,
                                    inputtext["catalogURL"], inputtext["data"])
         elif method == "getDeviceName":
             res = dev.getDeviceName(petID, deviceID,

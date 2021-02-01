@@ -8,7 +8,7 @@ from telegram.ext import MessageHandler
 from telegram.ext import Filters
 from telegram.ext import CallbackQueryHandler
 import logging
-
+from datetime import datetime
 import requests
 
 telBotUsers = {}
@@ -324,7 +324,7 @@ def cur_weight_1(update, context):
         getInfo = json.loads(requests.get(sensorDataAPI + "/getCurrent/" + "W_1").text)
         if getInfo["Result"] == "success":
             data = getInfo["Output"][0]
-            text = "Current Pet Weight : " + str(data["sensorData"]) + " " + str(data["unit"])
+            text = "Current Food Weight : " + str(data["sensorData"]) + " " + str(data["unit"])
         else:
             text = "Pet Weight sensor is not active or no data found"
         update.message.reply_text(text)
@@ -345,7 +345,7 @@ def cur_weight_2(update, context):
         getInfo = json.loads(requests.get(sensorDataAPI + "/getCurrent/" + "W_2").text)
         if getInfo["Result"] == "success":
             data = getInfo["Output"][0]
-            text = "Current Food Weight : " + str(data["sensorData"]) + " " + str(data["unit"])
+            text = "Current Pet Weight : " + str(data["sensorData"]) + " " + str(data["unit"])
         else:
             text = "Food Weight sensor is not active or no data found"
         update.message.reply_text(text)
@@ -408,15 +408,15 @@ def query_reply(inputData):
     s, chatID = inputData.split(":")[0], int(inputData.split(":")[1].encode())
     if s == 'temp':
         text = current_reading(chatID, "temp_1")
-        text = "Current Temperature of Pet : " + text
-        return text
-    elif s == 'weight':
-        text = current_reading(chatID, "W_1")
-        text = "Current Weight of Pet : " + text
+        text = "Current Temperature of Room : " + text
         return text
     elif s == 'food':
+        text = current_reading(chatID, "W_1")
+        text = "Current Food Level of Pet : " + text
+        return text
+    elif s == 'weight':
         text = current_reading(chatID, "W_2")
-        text = "Current Food level : " + text
+        text = "Current Weight of Pet : " + text
         return text
     elif s == 'water':
         text = current_reading(chatID,"WL_1")

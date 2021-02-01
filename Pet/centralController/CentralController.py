@@ -7,6 +7,9 @@ import paho.mqtt.client as PahoMQTT
 import requests
 import urllib3
 import ssl
+
+
+# Mqtt Methods
 class MyMQTT:
     def __init__(self,name, broker, port, notifier, petID):
         self.broker = broker
@@ -25,7 +28,7 @@ class MyMQTT:
 
     def myPublish(self, plug_id, pt_name, data, topic=""):
         pt_topic = topic
-        js = {"petID": pt_name,"value": data}
+        js = {"petID": pt_name,"value": data,"dt":datetime.now()}
         print(js)
         self._paho_mqtt.publish(pt_topic, json.dumps(js).encode('utf8'), 2)
 
@@ -53,6 +56,7 @@ class CentralController:
         self.curDevices = []
         self.initSystem()
 
+    # init system
     def initSystem(self):
         self.deviceID = self.systemInfo["deviceID"]
         self.catalogURL = self.systemInfo["catalogURL"]
@@ -131,14 +135,15 @@ class CentralController:
             time.sleep(120)
             self.serviceConfigurations()
 
-
+    # pet Details
     def petDetails(self):
         self.pet_owner_details = json.loads(requests.get(self.serverURL
                                                  +"getPetUserDetails" + "/"
                                                  + self.petID).text)
         self.pet_data = json.loads(requests.get(self.serverURL
                                                          + "getPetDetails" + "/"
-                                                         + self.pet_owner_details['Output'][0]["breed"]).text)
+                                                         + self.pet_owner_details['Output'][0]["IDS"][0]['breed']).text)
+
     def startSystem(self):
         self.agg_sensor_readings = {i: [] for i in self.curDevices}
         self.proj_temp_readings = {i["ID"]: [] for i in self.tempSensors}
@@ -206,6 +211,7 @@ class CentralController:
         except KeyError:
             print("Yet to add the sensor")
 
+    #  decision making publishing to telegram bot alert messages
     def decisionMaking(self):
         while True:
             self.pet_data_out = self.pet_data['Output'][0]
@@ -218,11 +224,11 @@ class CentralController:
                     das = str(datetime.strptime(self.proj_temp_date[temp][0],
                                                 '%Y-%m-%dT%H:%M:%S.%f'))
                     if(np.mean(self.proj_temp_readings[temp])>=high):
-                        self.telMqtt.myPublish("", self.petID, "Pet Temperature is High",
+                        self.telMqtt.myPublish("", self.petID, "Room Temperature is High",
                                                topic='petService/centralController/telegram/messages')
                         status = "HIGH"
                     elif (np.mean(self.proj_temp_readings[temp])<=low):
-                        self.telMqtt.myPublish("", self.petID, "Pet Temperature is Low",
+                        self.telMqtt.myPublish("", self.petID, "Room Temperature is Low",
                                                topic='petService/centralController/telegram/messages')
                         status = "LOW"
                     else:
@@ -269,7 +275,7 @@ class CentralController:
                 if w=="W_2":
                     if self.proj_w_readings[w] and len(self.agg_sensor_readings[w]):
                         self.agg_sensor_readings[w].pop(0)
-                        if("Male" in self.pet_owner_details['Output'][0]['sex_of_animal']):
+                        if("Male" in self.pet_owner_details['Output'][0]["IDS"][0]['sex_of_animal']):
                             high = self.pet_data_out['Weight']['Male']['high']
                             low = self.pet_data_out['Weight']['Male']['low']
                         else:
